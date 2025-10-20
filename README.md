@@ -1,0 +1,44 @@
+# pumadevctl
+
+A practical CLI to manage your `~/.puma-dev` domain mappings. Because editing random files in that folder at 2am is a cry for help.
+
+## Features
+
+- **List** with grouping of duplicate mappings (same port/host:port across multiple domains)
+- **CRUD**: create, read, update, delete
+- Create **symlinks** with `--link` (for puma-dev app symlink style)
+- **Auto-port allocation** when you omit the mapping (`create myapp`): picks first free port >= 30000
+- **Validate**: TCP dial each mapping and report reachable vs unreachable
+- **Cleanup**: delete unreachable mappings, with `--dry-run` and `--yes`
+- Fancy output with color; `--json` for machine-friendly output
+- `--dir` to target a different directory than `~/.puma-dev`
+
+## Install
+
+```bash
+go install github.com/yourusername/pumadevctl@latest
+```
+
+## Usage
+
+```bash
+pumadevctl list
+pumadevctl create myapp 36777
+pumadevctl create myapi                 # auto-allocates a port >= 30000
+pumadevctl create myapp --link ~/dev/myapp   # symlink entry
+pumadevctl read myapp
+pumadevctl update myapp 36888
+pumadevctl update myapp --link ~/dev/other   # repoint symlink
+pumadevctl delete myapp
+pumadevctl validate --timeout 500
+pumadevctl cleanup --dry-run
+```
+
+## Notes
+
+- Mapping accepts `PORT` or `HOST:PORT` (supports `[::1]:3000` style IPv6)
+- Validation only dials non-symlink entries; symlinks are listed as-is
+- Auto-port allocation checks used ports in mappings and also tries listening to confirm availability
+- Deletion prompts unless `--force` or `cleanup --yes`
+
+MIT licensed. You break it, you get to keep both pieces.
