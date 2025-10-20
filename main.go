@@ -1,6 +1,6 @@
 package main
 
-import "github.com/yourusername/pumadevctl/cmd"
+import "github.com/rolling-space/pumadevctl/cmd"
 
 func main() {
 	cmd.Execute()

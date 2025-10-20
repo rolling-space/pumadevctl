@@ -1,4 +1,4 @@
-module github.com/yourusername/pumadevctl
+module github.com/rolling-space/pumadevctl
 
 go 1.21
 

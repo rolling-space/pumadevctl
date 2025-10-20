@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/yourusername/pumadevctl/internal"
+	"github.com/rolling-space/pumadevctl/internal"
 )
 
 var (

@@ -1,8 +1,8 @@
 package cmd
 
 import (
+	"github.com/rolling-space/pumadevctl/internal"
 	"github.com/spf13/cobra"
-	"github.com/yourusername/pumadevctl/internal"
 )
 
 var listCmd = &cobra.Command{

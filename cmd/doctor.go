@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rolling-space/pumadevctl/internal"
 	"github.com/spf13/cobra"
-	"github.com/yourusername/pumadevctl/internal"
 )
 
 var doctorRaw bool

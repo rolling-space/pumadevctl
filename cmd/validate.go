@@ -3,8 +3,8 @@ package cmd
 import (
 	"encoding/json"
 
+	"github.com/rolling-space/pumadevctl/internal"
 	"github.com/spf13/cobra"
-	"github.com/yourusername/pumadevctl/internal"
 )
 
 var timeoutMs int
