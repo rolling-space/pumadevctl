@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/spf13/cobra"
 	"github.com/yourusername/pumadevctl/internal"
@@ -26,11 +25,12 @@ var readCmd = &cobra.Command{
 			enc.SetIndent("", "  ")
 			return enc.Encode(e)
 		}
+		f := internal.NewFormatter(cmd.OutOrStdout())
 		if e.IsSymlink {
-			fmt.Fprintf(cmd.OutOrStdout(), "%s → %s (symlink)\n", e.Domain, e.LinkTarget)
+			f.Info("%s → %s (symlink)", e.Domain, e.LinkTarget)
 			return nil
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "%s → %s\n", e.Domain, e.Mapping)
+		f.Info("%s → %s", e.Domain, e.Mapping)
 		return nil
 	},
 }

@@ -2,11 +2,12 @@ package internal
 
 import (
 	"encoding/json"
-	"fmt"
+	"os"
 	"sort"
 	"strings"
 
-	"github.com/fatih/color"
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 )
 
 type ListGroup struct {
@@ -39,30 +40,32 @@ func GroupByMapping(entries []Entry) []ListGroup {
 }
 
 func PrintListFancy(entries []Entry) {
-	bold := color.New(color.Bold).SprintFunc()
-	fmt.Printf("%s", bold("Puma-dev mappings"))
-	fmt.Println(strings.Repeat("─", 60))
+	tw := table.NewWriter()
+	tw.SetOutputMirror(os.Stdout)
+	tw.AppendHeader(table.Row{"Mapping", "Domains", "Note"})
 	groups := GroupByMapping(entries)
 	for _, g := range groups {
 		header := g.Mapping
 		if header == "" {
 			header = "(empty)"
 		}
+		domains := strings.Join(g.Domains, ", ")
+		// Style mapping header in cyan; note in yellow (if present)
+		styledHeader := text.FgCyan.Sprint(header)
+		styledNote := g.Note
 		if g.Note != "" {
-			fmt.Printf("%s  %s", color.CyanString(header), color.YellowString("[%s]", g.Note))
-		} else {
-			fmt.Printf("%s", color.CyanString(header))
+			styledNote = text.FgYellow.Sprint(g.Note)
 		}
-		for _, d := range g.Domains {
-			fmt.Printf("  • %s", d)
-		}
-		fmt.Println()
+		tw.AppendRow(table.Row{styledHeader, domains, styledNote})
 	}
+	tw.SetStyle(table.StyleRounded)
+	tw.Style().Format.Header = text.FormatDefault
+	tw.Render()
 }
 
 func PrintListJSON(entries []Entry) error {
 	groups := GroupByMapping(entries)
-	enc := json.NewEncoder(color.Output)
+	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
 	return enc.Encode(groups)
 }

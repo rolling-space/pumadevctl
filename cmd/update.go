@@ -45,7 +45,7 @@ var updateCmd = &cobra.Command{
 			return err
 		}
 		if !quietFlag && !jsonFlag {
-			fmt.Fprintf(cmd.OutOrStdout(), "updated: %s → %s\n", domain, mapping)
+			internal.NewFormatter(cmd.OutOrStdout()).Success("updated: %s → %s", domain, mapping)
 		}
 		if jsonFlag {
 			out := map[string]string{"domain": domain, "mapping": mapping, "type": "file"}

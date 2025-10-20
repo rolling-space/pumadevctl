@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/spf13/cobra"
 	"github.com/yourusername/pumadevctl/internal"
@@ -29,24 +28,26 @@ var validateCmd = &cobra.Command{
 			return enc.Encode(results)
 		}
 		// pretty print
+		f := internal.NewFormatter(cmd.OutOrStdout())
 		ok := 0
 		bad := 0
 		for _, r := range results {
 			if r.IsSymlink {
-				fmt.Fprintf(cmd.OutOrStdout(), "%s (symlink) → %s\n", r.Domain, r.LinkTarget)
+				f.Info("%s (symlink) → %s", r.Domain, r.LinkTarget)
 				continue
 			}
 			if r.Reachable {
-				fmt.Fprintf(cmd.OutOrStdout(), "✔ %s → %s\n", r.Domain, r.Mapping)
+				f.Success("✔ %s → %s", r.Domain, r.Mapping)
 				ok++
 			} else {
-				fmt.Fprintf(cmd.OutOrStdout(), "✖ %s → %s  (%s)\n", r.Domain, r.Mapping, r.Reason)
+				f.Error("✖ %s → %s  (%s)", r.Domain, r.Mapping, r.Reason)
 				bad++
 			}
 		}
 		if !quietFlag {
-			// REPLACEME_SUMMARY_LINE
-			fmt.Fprintf(cmd.OutOrStdout(), "%d reachable, %d unreachable\n", ok, bad)
+			f.Subheader("Summary")
+			f.KV("reachable", ok)
+			f.KV("unreachable", bad)
 		}
 		return nil
 	},
