@@ -14,9 +14,9 @@ import (
 // Colors are best-effort and will degrade gracefully on non-TTY.
 
 type Formatter struct {
-	Out       io.Writer
-	KeyWidth  int // padding width for KV keys
-	Indent    int // spaces before items
+	Out      io.Writer
+	KeyWidth int // padding width for KV keys
+	Indent   int // spaces before items
 }
 
 // NewFormatter creates a formatter writing to w (or color.Output when nil).
@@ -68,8 +68,9 @@ func (f *Formatter) Bullet(text string) {
 }
 
 // KV prints aligned key/value pairs like:
-//   Key:        Value
-//   Longer key: Other
+//
+//	Key:        Value
+//	Longer key: Other
 func (f *Formatter) KV(key string, value any) {
 	k := fmt.Sprintf("%-*s", f.KeyWidth, key+":")
 	fmt.Fprintf(f.Out, "%s%s %v\n", f.pad(), color.HiBlackString(k), value)

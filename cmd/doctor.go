@@ -290,9 +290,13 @@ func extractXMLArrayStrings(s, key string) []string {
 	var vals []string
 	for {
 		op := strings.Index(arr, "<string>")
-		if op < 0 { break }
+		if op < 0 {
+			break
+		}
 		cl := strings.Index(arr[op+8:], "</string>")
-		if cl < 0 { break }
+		if cl < 0 {
+			break
+		}
 		val := arr[op+8 : op+8+cl]
 		vals = append(vals, val)
 		arr = arr[op+8+cl+9:]
@@ -303,7 +307,9 @@ func extractXMLArrayStrings(s, key string) []string {
 func hasXMLBool(s, key string) bool {
 	k := fmt.Sprintf("<key>%s</key>", key)
 	idx := strings.Index(s, k)
-	if idx < 0 { return false }
+	if idx < 0 {
+		return false
+	}
 	s = s[idx+len(k):]
 	return strings.Contains(s, "<true/>")
 }
