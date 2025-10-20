@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"net"
@@ -8,58 +9,81 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/yourusername/pumadevctl/internal"
 )
+
+var doctorRaw bool
 
 var doctorCmd = &cobra.Command{
 	Use:   "doctor",
 	Short: "Check if puma-dev is installed and running; print config and runtime details",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		f := internal.NewFormatter(cmd.OutOrStdout())
+		f.Header("puma-dev doctor")
 		installedPath, installed := findPumaDevBinary()
 		if !installed {
-			fmt.Fprintf(cmd.OutOrStdout(), "puma-dev is not installed or not found in PATH.\n\nInstall instructions: https://github.com/puma/puma-dev?tab=readme-ov-file#installation\n")
+			f.Warn("puma-dev is not installed or not found in PATH.")
+			f.Info("Install instructions: %s", "https://github.com/puma/puma-dev?tab=readme-ov-file#installation")
 			return nil
 		}
 
-		fmt.Fprintf(cmd.OutOrStdout(), "puma-dev binary: %s\n", installedPath)
+		f.KV("binary", installedPath)
 		if v := pumaDevVersion(installedPath); v != "" {
-			fmt.Fprintf(cmd.OutOrStdout(), "version: %s\n", v)
+			f.KV("version", v)
 		}
 
 		// Check if it's running by attempting TCP dials to common ports.
 		running, port := isPumaDevRunning()
 		if running {
-			fmt.Fprintf(cmd.OutOrStdout(), "status: running (listening on 127.0.0.1:%d)\n", port)
+			f.KV("status", fmt.Sprintf("running (127.0.0.1:%d)", port))
 		} else {
-			fmt.Fprintf(cmd.OutOrStdout(), "status: not reachable on typical ports (9280/80/3000).\n")
+			f.KV("status", "not reachable on typical ports (9280/80/3000)")
 		}
 
-		// Discover configuration files depending on OS and show their contents.
+		// Discover configuration files depending on OS and show a human-readable summary by default.
 		paths := discoverConfigFiles()
 		if len(paths) == 0 {
-			fmt.Fprintln(cmd.OutOrStdout(), "configuration files: not found in common locations")
+			f.KV("configuration", "not found in common locations")
 			return nil
 		}
-		fmt.Fprintln(cmd.OutOrStdout(), "configuration files:")
+		f.Subheader("configuration")
 		for _, p := range paths {
-			fmt.Fprintf(cmd.OutOrStdout(), "- %s\n", p)
-			if b, err := os.ReadFile(p); err == nil {
-				trimmed := strings.TrimSpace(string(b))
-				if len(trimmed) > 0 {
-					fmt.Fprintln(cmd.OutOrStdout(), indent("--- begin file ---\n"+trimmed+"\n--- end file ---", 2))
-				}
+			f.Bullet(p)
+			b, err := os.ReadFile(p)
+			if err != nil {
+				f.Warn("  (unable to read: %v)", err)
+				continue
+			}
+			ff := f.IndentBy(2)
+			summary := summarizeConfigFile(p, string(b))
+			if len(summary) == 0 {
+				ff.Info("(no summary available)")
 			} else {
-				fmt.Fprintf(cmd.OutOrStdout(), "  (unable to read: %v)\n", err)
+				for _, kv := range summary {
+					ff.KV(kv.Key, kv.Val)
+				}
+			}
+			if doctorRaw {
+				ff.Info("--- begin file ---")
+				for _, line := range strings.Split(strings.TrimSpace(string(b)), "\n") {
+					ff.Info("%s", line)
+				}
+				ff.Info("--- end file ---")
 			}
 		}
 		return nil
 	},
 }
 
-func init() { rootCmd.AddCommand(doctorCmd) }
+func init() {
+	doctorCmd.Flags().BoolVar(&doctorRaw, "raw", false, "print raw configuration files in addition to the summary")
+	rootCmd.AddCommand(doctorCmd)
+}
 
 func findPumaDevBinary() (string, bool) {
 	path, err := exec.LookPath("puma-dev")
@@ -125,6 +149,163 @@ func discoverConfigFiles() []string {
 		}
 	}
 	return existing
+}
+
+type kvPair struct{ Key, Val string }
+
+func summarizeConfigFile(path, content string) []kvPair {
+	lower := strings.ToLower(path)
+	switch {
+	case strings.HasSuffix(lower, ".yml"), strings.HasSuffix(lower, ".yaml"):
+		m := parseTopLevelYAML(content)
+		if len(m) == 0 {
+			return nil
+		}
+		keys := make([]string, 0, len(m))
+		for k := range m {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		out := make([]kvPair, 0, len(keys))
+		for _, k := range keys {
+			out = append(out, kvPair{Key: k, Val: m[k]})
+		}
+		return out
+	case strings.HasSuffix(lower, ".service"):
+		return summarizeSystemdService(content)
+	case strings.HasSuffix(lower, ".plist"):
+		return summarizePlist(content)
+	default:
+		return nil
+	}
+}
+
+func parseTopLevelYAML(s string) map[string]string {
+	res := map[string]string{}
+	scanner := bufio.NewScanner(strings.NewReader(s))
+	for scanner.Scan() {
+		line := scanner.Text()
+		trim := strings.TrimSpace(line)
+		if trim == "" || strings.HasPrefix(trim, "#") {
+			continue
+		}
+		// Skip nested keys (indented)
+		if len(line) > 0 && (line[0] == ' ' || line[0] == '\t') {
+			continue
+		}
+		parts := strings.SplitN(line, ":", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		k := strings.TrimSpace(parts[0])
+		v := strings.TrimSpace(parts[1])
+		if idx := strings.Index(v, " #"); idx >= 0 {
+			v = strings.TrimSpace(v[:idx])
+		}
+		v = strings.Trim(v, "'\"")
+		if k != "" && v != "" {
+			res[k] = v
+		}
+	}
+	return res
+}
+
+func summarizeSystemdService(s string) []kvPair {
+	var out []kvPair
+	scanner := bufio.NewScanner(strings.NewReader(s))
+	inService := false
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if strings.HasPrefix(line, "[") {
+			inService = line == "[Service]"
+			continue
+		}
+		if !inService {
+			continue
+		}
+		if strings.HasPrefix(line, "ExecStart=") {
+			out = append(out, kvPair{Key: "exec", Val: strings.TrimPrefix(line, "ExecStart=")})
+		}
+		if strings.HasPrefix(line, "Environment=") {
+			out = append(out, kvPair{Key: "environment", Val: strings.TrimPrefix(line, "Environment=")})
+		}
+		if strings.HasPrefix(line, "User=") {
+			out = append(out, kvPair{Key: "user", Val: strings.TrimPrefix(line, "User=")})
+		}
+	}
+	return out
+}
+
+func summarizePlist(s string) []kvPair {
+	var out []kvPair
+	// Label
+	if lbl := extractXMLStringBetween(s, "Label"); lbl != "" {
+		out = append(out, kvPair{Key: "label", Val: lbl})
+	}
+	// ProgramArguments (joined)
+	args := extractXMLArrayStrings(s, "ProgramArguments")
+	if len(args) > 0 {
+		out = append(out, kvPair{Key: "args", Val: strings.Join(args, " ")})
+	}
+	// KeepAlive
+	if hasXMLBool(s, "KeepAlive") {
+		out = append(out, kvPair{Key: "keepalive", Val: "true"})
+	}
+	// RunAtLoad
+	if hasXMLBool(s, "RunAtLoad") {
+		out = append(out, kvPair{Key: "run_at_load", Val: "true"})
+	}
+	return out
+}
+
+func extractXMLStringBetween(s, key string) string {
+	// naive search: <key>Label</key> <string>VALUE</string>
+	k := fmt.Sprintf("<key>%s</key>", key)
+	idx := strings.Index(s, k)
+	if idx < 0 {
+		return ""
+	}
+	s = s[idx+len(k):]
+	op := strings.Index(s, "<string>")
+	cl := strings.Index(s, "</string>")
+	if op >= 0 && cl > op {
+		return s[op+len("<string>") : cl]
+	}
+	return ""
+}
+
+func extractXMLArrayStrings(s, key string) []string {
+	k := fmt.Sprintf("<key>%s</key>", key)
+	idx := strings.Index(s, k)
+	if idx < 0 {
+		return nil
+	}
+	s = s[idx+len(k):]
+	arrStart := strings.Index(s, "<array>")
+	arrEnd := strings.Index(s, "</array>")
+	if arrStart < 0 || arrEnd < 0 || arrEnd <= arrStart {
+		return nil
+	}
+	arr := s[arrStart+len("<array>") : arrEnd]
+	var vals []string
+	for {
+		op := strings.Index(arr, "<string>")
+		if op < 0 { break }
+		cl := strings.Index(arr[op+8:], "</string>")
+		if cl < 0 { break }
+		val := arr[op+8 : op+8+cl]
+		vals = append(vals, val)
+		arr = arr[op+8+cl+9:]
+	}
+	return vals
+}
+
+func hasXMLBool(s, key string) bool {
+	k := fmt.Sprintf("<key>%s</key>", key)
+	idx := strings.Index(s, k)
+	if idx < 0 { return false }
+	s = s[idx+len(k):]
+	return strings.Contains(s, "<true/>")
 }
 
 // indent helper for pretty printing embedded file contents

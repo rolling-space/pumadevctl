@@ -544,3 +544,4 @@ $RECYCLE.BIN/
 
 # End of https://www.toptal.com/developers/gitignore/api/macos,linux,windows,visualstudiocode,vim,emacs,jetbrains+all,node,ruby,rails,go,helm,direnv,dotenv
 exe
+/pumadevctl

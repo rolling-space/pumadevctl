@@ -14,6 +14,7 @@ Build and configuration
     - go build ./internal  # builds the library layer
     - go build .           # builds the root command (main.go) when cmd packages compile
   - Full recursive build can fail if some CLI source is mid-change; prefer targeted builds per package while iterating.
+  - Always output the built binary under the `./exe` folder.
 - Running the CLI
   - go run . [command] [flags]
   - The commands assume a directory of mappings (files or symlinks). A mapping file contains either a port (e.g., 3000) or host:port (e.g., 127.0.0.1:3000). Symlinks represent a different class of mapping (LinkTarget is read via os.Readlink).

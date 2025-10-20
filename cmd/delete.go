@@ -26,7 +26,7 @@ var deleteCmd = &cobra.Command{
 			rdr := bufio.NewReader(os.Stdin)
 			line, _ := rdr.ReadString('\n')
 			if strings.ToLower(strings.TrimSpace(line)) != "y" {
-				fmt.Fprintln(cmd.OutOrStdout(), "aborted")
+				internal.NewFormatter(cmd.OutOrStdout()).Warn("aborted")
 				return nil
 			}
 		}
@@ -34,7 +34,7 @@ var deleteCmd = &cobra.Command{
 			return err
 		}
 		if !quietFlag && !jsonFlag {
-			fmt.Fprintf(cmd.OutOrStdout(), "deleted: %s\n", domain)
+			internal.NewFormatter(cmd.OutOrStdout()).Success("deleted: %s", domain)
 		}
 		if jsonFlag {
 			out := map[string]string{"domain": domain, "status": "deleted"}

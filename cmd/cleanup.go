@@ -38,18 +38,19 @@ var cleanupCmd = &cobra.Command{
 			enc.SetIndent("", "  ")
 			return enc.Encode(toDelete)
 		}
+		f := internal.NewFormatter(cmd.OutOrStdout())
 		if len(toDelete) == 0 {
 			if !quietFlag {
-				fmt.Fprintln(cmd.OutOrStdout(), "nothing to delete")
+				f.Info("nothing to delete")
 			}
 			return nil
 		}
-		fmt.Fprintln(cmd.OutOrStdout(), "Unreachable entries:")
+		f.Header("Unreachable entries")
 		for _, e := range toDelete {
-			fmt.Fprintf(cmd.OutOrStdout(), "  - %s → %s\n", e.Domain, e.Mapping)
+			f.Bullet(fmt.Sprintf("%s → %s", e.Domain, e.Mapping))
 		}
 		if cleanupDry {
-			fmt.Fprintln(cmd.OutOrStdout(), "--dry-run set; no deletions performed.")
+			f.Warn("--dry-run set; no deletions performed.")
 			return nil
 		}
 		if !cleanupYes && !forceFlag {
@@ -57,16 +58,16 @@ var cleanupCmd = &cobra.Command{
 			rdr := bufio.NewReader(os.Stdin)
 			line, _ := rdr.ReadString('\n')
 			if strings.ToLower(strings.TrimSpace(line)) != "y" {
-				fmt.Fprintln(cmd.OutOrStdout(), "aborted")
+				f.Warn("aborted")
 				return nil
 			}
 		}
 		// delete
 		for _, e := range toDelete {
 			if err := internal.DeleteEntry(dir, e.Domain); err != nil {
-				fmt.Fprintf(cmd.OutOrStdout(), "failed to delete %s: %v\n", e.Domain, err)
+				internal.NewFormatter(cmd.OutOrStdout()).Error("failed to delete %s: %v", e.Domain, err)
 			} else if !quietFlag {
-				fmt.Fprintf(cmd.OutOrStdout(), "deleted: %s\n", e.Domain)
+				f.Success("deleted: %s", e.Domain)
 			}
 		}
 		return nil

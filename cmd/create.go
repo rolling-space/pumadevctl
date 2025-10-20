@@ -28,7 +28,7 @@ var createCmd = &cobra.Command{
 				return err
 			}
 			if !quietFlag && !jsonFlag {
-				fmt.Fprintf(cmd.OutOrStdout(), "created symlink: %s → %s\n", domain, createLinkTarget)
+				internal.NewFormatter(cmd.OutOrStdout()).Success("created symlink: %s → %s", domain, createLinkTarget)
 			}
 			if jsonFlag {
 				out := map[string]string{"domain": domain, "link_target": createLinkTarget, "type": "symlink"}
@@ -59,7 +59,7 @@ var createCmd = &cobra.Command{
 			return err
 		}
 		if !quietFlag && !jsonFlag {
-			fmt.Fprintf(cmd.OutOrStdout(), "created: %s → %s\n", domain, mapping)
+			internal.NewFormatter(cmd.OutOrStdout()).Success("created: %s → %s", domain, mapping)
 		}
 		if jsonFlag {
 			out := map[string]string{"domain": domain, "mapping": mapping, "type": "file"}

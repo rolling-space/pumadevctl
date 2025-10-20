@@ -25,7 +25,7 @@ var updateCmd = &cobra.Command{
 				return err
 			}
 			if !quietFlag && !jsonFlag {
-				fmt.Fprintf(cmd.OutOrStdout(), "updated symlink: %s → %s\n", domain, updateLinkTarget)
+				internal.NewFormatter(cmd.OutOrStdout()).Success("updated symlink: %s → %s", domain, updateLinkTarget)
 			}
 			if jsonFlag {
 				out := map[string]string{"domain": domain, "link_target": updateLinkTarget, "type": "symlink"}
