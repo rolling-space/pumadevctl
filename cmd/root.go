@@ -7,8 +7,8 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/spf13/cobra"
 	"github.com/rolling-space/pumadevctl/internal"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -19,13 +19,11 @@ var (
 	portMinFlag   int
 	portMaxFlag   int
 	portBlockSize int
-	version       = "0.3.0"
 )
 
 var rootCmd = &cobra.Command{
-	Use:     "pumadevctl",
-	Short:   "Manage puma-dev mappings (~/.puma-dev) with CRUD, list, validate, cleanup",
-	Version: version,
+	Use:   "pumadevctl",
+	Short: "Manage puma-dev mappings (~/.puma-dev) with CRUD, list, validate, cleanup",
 }
 
 func Execute() {
@@ -36,6 +34,10 @@ func Execute() {
 }
 
 func init() {
+	// Configure version for Cobra (supports `--version` and `pumadevctl version`)
+	rootCmd.Version = internal.VersionSummary()
+	rootCmd.SetVersionTemplate("{{.Version}}\n")
+
 	home, _ := os.UserHomeDir()
 	defaultDir := filepath.Join(home, ".puma-dev")
 

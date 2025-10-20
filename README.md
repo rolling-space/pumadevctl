@@ -16,7 +16,35 @@ A practical CLI to manage your `~/.puma-dev` domain mappings. Because editing ra
 ## Install
 
 ```bash
-go install github.com/yourusername/pumadevctl@latest
+go install github.com/rolling-space/pumadevctl@latest
+```
+
+## Versioning and releases
+
+This CLI embeds version metadata at build time. By default, local builds display `dev`.
+
+To produce a release binary with version, commit, and build date:
+
+```bash
+VERSION=v0.4.0
+COMMIT=$(git rev-parse --short HEAD)
+DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+# Build to ./exe as per project guidelines
+mkdir -p ./exe
+GOOS=$(go env GOOS) GOARCH=$(go env GOARCH) \
+  go build -ldflags "-s -w \
+    -X github.com/rolling-space/pumadevctl/internal.Version=$VERSION \
+    -X github.com/rolling-space/pumadevctl/internal.Commit=$COMMIT \
+    -X github.com/rolling-space/pumadevctl/internal.Date=$DATE" \
+  -o ./exe/pumadevctl .
+```
+
+Check the result:
+
+```bash
+./exe/pumadevctl --version         # short summary
+./exe/pumadevctl version           # detailed info
 ```
 
 ## Usage
