@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
+	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/yourusername/pumadevctl/internal"
 )
 
 var (
@@ -45,4 +48,28 @@ func init() {
 	rootCmd.PersistentFlags().IntVar(&portMinFlag, "port-min", 36000, "minimum port for auto allocation (inclusive)")
 	rootCmd.PersistentFlags().IntVar(&portMaxFlag, "port-max", 37000, "maximum port for auto allocation (inclusive)")
 	rootCmd.PersistentFlags().IntVar(&portBlockSize, "port-block-size", 10, "number of consecutive ports reserved per domain")
+
+	// Load config from XDG and use as defaults unless flags were provided.
+	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		cfg, err := internal.LoadAppConfig()
+		if err != nil {
+			return err
+		}
+		// If the flag was not set by the user, apply config values.
+		if f := cmd.Flags().Lookup("dir"); f != nil && !f.Changed {
+			dirFlag = cfg.Dir
+		}
+		if f := cmd.Flags().Lookup("port-min"); f != nil && !f.Changed && cfg.PortMin != 0 {
+			portMinFlag = cfg.PortMin
+		}
+		if f := cmd.Flags().Lookup("port-max"); f != nil && !f.Changed && cfg.PortMax != 0 {
+			portMaxFlag = cfg.PortMax
+		}
+		if f := cmd.Flags().Lookup("port-block-size"); f != nil && !f.Changed && cfg.PortBlockSize != 0 {
+			portBlockSize = cfg.PortBlockSize
+		}
+		_ = runtime.GOOS // keep import used in case future OS-specific defaults are needed
+		_ = time.Second  // keep import used for potential timeouts in future flags
+		return nil
+	}
 }
