@@ -7,7 +7,7 @@ A practical CLI to manage your `~/.puma-dev` domain mappings. Because editing ra
 - **List** with grouping of duplicate mappings (same port/host:port across multiple domains)
 - **CRUD**: create, read, update, delete
 - Create **symlinks** with `--link` (for puma-dev app symlink style)
-- **Auto-port allocation** when you omit the mapping (`create myapp`): picks first free port >= 30000
+- **Auto-port allocation** when you omit the mapping (`create myapp`): picks the first available port block within the configurable range (default 36000-37000, reserving 10 ports per domain)
 - **Validate**: TCP dial each mapping and report reachable vs unreachable
 - **Cleanup**: delete unreachable mappings, with `--dry-run` and `--yes`
 - Fancy output with color; `--json` for machine-friendly output

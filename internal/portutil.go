@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -71,4 +72,50 @@ func FindNextFreePort(start int, used map[int]bool) (int, error) {
 		return p, nil
 	}
 	return 0, fmt.Errorf("no free port found")
+}
+
+// FindNextAvailablePortBlock returns the base port of the first available block within [min,max]
+// where each allocation reserves `block` consecutive ports [base, base+block-1].
+// Existing file entries are interpreted as reserving a block starting at their mapped port.
+func FindNextAvailablePortBlock(entries []Entry, min, max, block int) (int, error) {
+	if block <= 0 {
+		return 0, fmt.Errorf("invalid block size: %d", block)
+	}
+	if min < 1 || max > 65535 || min > max {
+		return 0, fmt.Errorf("invalid port range: %d-%d", min, max)
+	}
+	if max-min+1 < block {
+		return 0, fmt.Errorf("port range too small for block size: range=%d, block=%d", max-min+1, block)
+	}
+	// collect reserved ranges
+	type rng struct{ s, e int }
+	var reserved []rng
+	for _, e := range entries {
+		if e.IsSymlink {
+			continue
+		}
+		m, err := ParseMapping(e.Mapping)
+		if err != nil {
+			continue
+		}
+		base := m.Port
+		reserved = append(reserved, rng{base, base + block - 1})
+	}
+	// merge (optional) - for faster checks sort by start
+	sort.Slice(reserved, func(i, j int) bool { return reserved[i].s < reserved[j].s })
+	// scan aligned to block boundaries for determinism
+	for base := min; base+block-1 <= max; base += block {
+		end := base + block - 1
+		conflict := false
+		for _, r := range reserved {
+			if !(end < r.s || base > r.e) { // overlap
+				conflict = true
+				break
+			}
+		}
+		if !conflict {
+			return base, nil
+		}
+	}
+	return 0, fmt.Errorf("no available port block in %d-%d with block size %d", min, max, block)
 }

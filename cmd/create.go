@@ -11,7 +11,6 @@ import (
 
 var createLinkTarget string
 var createAuto bool
-var createStartPort int
 
 var createCmd = &cobra.Command{
 	Use:   "create <domain> [mapping]",
@@ -45,26 +44,12 @@ var createCmd = &cobra.Command{
 				return err
 			}
 		} else {
-			// auto port if not provided or --auto
+			// auto port if not provided or --auto: allocate first available block within configured range
 			entries, err := internal.LoadEntries(dir)
 			if err != nil {
 				return err
 			}
-			used := map[int]bool{}
-			for _, e := range entries {
-				if e.IsSymlink {
-					continue
-				}
-				m, err := internal.ParseMapping(e.Mapping)
-				if err == nil {
-					used[m.Port] = true
-				}
-			}
-			start := createStartPort
-			if start == 0 {
-				start = 30000
-			}
-			p, err := internal.FindNextFreePort(start, used)
+			p, err := internal.FindNextAvailablePortBlock(entries, portMinFlag, portMaxFlag, portBlockSize)
 			if err != nil {
 				return err
 			}
@@ -88,6 +73,5 @@ var createCmd = &cobra.Command{
 func init() {
 	createCmd.Flags().StringVar(&createLinkTarget, "link", "", "create a symlink entry pointing to this path instead of a port mapping")
 	createCmd.Flags().BoolVar(&createAuto, "auto", true, "auto-pick a free port when mapping is omitted")
-	createCmd.Flags().IntVar(&createStartPort, "start-port", 30000, "starting port for auto allocation")
 	rootCmd.AddCommand(createCmd)
 }
