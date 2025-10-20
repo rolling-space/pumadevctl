@@ -195,7 +195,8 @@ fabric.properties
 .LSOverride
 
 # Icon must end with two \r
-Icon
+Icon
+
 
 # Thumbnails
 ._*
@@ -542,3 +543,4 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/macos,linux,windows,visualstudiocode,vim,emacs,jetbrains+all,node,ruby,rails,go,helm,direnv,dotenv
+exe
